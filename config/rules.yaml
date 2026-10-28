@@ -1,0 +1,108 @@
+# Reglas de detección.
+#
+# Tipos:
+#   threshold           >= min_count eventos del filtro dentro de `window`, por grupo
+#   repeated_signature  igual que threshold pero agrupando además por firma de mensaje
+#   match               cada evento que matchea abre (o actualiza) un incidente
+#   ratio               threshold + proporción mínima contra un denominador
+#
+# group_by acepta columnas (host, source, category) o campos con prefijo fields.
+# En `title` se pueden usar {host}, {fields.x}, {count}, {window}, {template}, {ratio}.
+# `cooldown`: mientras un incidente siga abierto, actividad nueva dentro de este
+# tiempo se suma al mismo incidente en lugar de crear otro (dedup).
+
+rules:
+  - id: ssh_bruteforce
+    type: threshold
+    title: "Fuerza bruta SSH desde {fields.src_ip} contra {host} ({count} intentos en {window})"
+    description: >
+      Muchos logins fallidos desde la misma IP en poco tiempo. Revisar si la IP
+      es conocida, bloquearla en firewall/fail2ban y validar que no haya un
+      "Accepted" posterior desde la misma IP.
+    severity: high
+    filter:
+      category: auth_failure
+      source: [auth, journald, syslog]
+    group_by: [host, fields.src_ip]
+    window: 5m
+    min_count: 11        # "más de 10 en 5 minutos"
+    cooldown: 60m
+
+  - id: windows_logon_bruteforce
+    type: threshold
+    title: "Logons fallidos en {host} desde {fields.src_ip} ({count} en {window})"
+    description: Eventos 4625 repetidos desde la misma IP. Posible password spraying si son varios usuarios.
+    severity: high
+    filter:
+      category: auth_failure
+      source: windows_security
+    group_by: [host, fields.src_ip]
+    window: 10m
+    min_count: 15
+    cooldown: 60m
+
+  - id: account_lockout
+    type: match
+    title: "Cuenta bloqueada: {fields.user} en {host}"
+    description: Evento 4740. Verificar el origen (caller computer) antes de desbloquear.
+    severity: medium
+    filter:
+      category: account_lockout
+    group_by: [host, fields.user]
+    cooldown: 4h
+
+  - id: service_crash_loop
+    type: threshold
+    title: "Crash loop de {fields.service} en {host} ({count} caídas en {window})"
+    description: >
+      El servicio cae y se reinicia repetidamente. Revisar journalctl -u <servicio>
+      o el visor de eventos, cambios recientes de config y consumo de memoria.
+    severity: critical
+    filter:
+      category: service_crash
+    group_by: [host, fields.service]
+    window: 10m
+    min_count: 3
+    cooldown: 30m
+
+  - id: unexpected_shutdown
+    type: match
+    title: "Apagado inesperado en {host}"
+    description: Evento 6008. Revisar energía, BSOD (minidump) o reinicio forzado del hipervisor.
+    severity: high
+    filter:
+      category: unexpected_shutdown
+    group_by: [host]
+    cooldown: 2h
+
+  - id: repeated_error
+    type: repeated_signature
+    title: "Error repetido en {host} ({count} veces en {window}): {template}"
+    description: El mismo error (normalizado) se repite. Suele indicar un problema persistente y no un pico aislado.
+    severity: medium
+    filter:
+      min_severity: error
+      category: [application_error, http_error]
+    group_by: [host]
+    window: 15m
+    min_count: 20
+    cooldown: 2h
+
+  - id: nginx_5xx_spike
+    type: ratio
+    title: "Pico de 5xx en {host}: {count} respuestas 5xx ({ratio} de las requests)"
+    description: >
+      Proporción alta de errores de servidor. Revisar error.log de nginx (upstream
+      caído o lento) y el estado del backend.
+    severity: high
+    filter:
+      category: http_access
+      field_gte:
+        status: 500
+    denominator:
+      category: http_access
+    group_by: [host]
+    window: 5m
+    min_count: 20
+    min_ratio: 0.10
+    cooldown: 30m

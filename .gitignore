@@ -1,0 +1,23 @@
+# Entornos y caches
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+build/
+dist/
+
+# Configuración local y secretos
+.env
+config/hosts.yaml
+
+# Datos generados
+*.db
+data/
+
+# Logs de ejemplo generados por scripts/generate_samples.py
+samples/*
+!samples/.gitkeep

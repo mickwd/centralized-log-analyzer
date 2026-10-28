@@ -1,0 +1,58 @@
+# Inventario de hosts. Copiar a config/hosts.yaml y ajustar.
+# Las credenciales NO van acá: se indican los nombres de las variables de entorno.
+#
+# initial_position:
+#   beginning  procesa el archivo completo la primera vez
+#   end        arranca desde el final (recomendado en producción para no ingerir meses de historia)
+
+defaults:
+  initial_position: end
+  timezone: UTC
+
+hosts:
+  - name: web-01
+    type: ssh
+    address: 10.10.0.11
+    port: 22
+    timezone: America/Argentina/Buenos_Aires   # para syslog RFC3164 y nginx error.log (sin offset)
+    sudo: true              # sudo -n para leer /var/log/auth.log (o agregar el usuario al grupo adm)
+    strict_host_keys: true  # requiere el host en ~/.ssh/known_hosts
+    credentials:
+      username_env: WEB01_SSH_USER
+      key_file_env: WEB01_SSH_KEY
+    files:
+      - { path: /var/log/auth.log, format: auth }
+      - { path: /var/log/syslog, format: syslog }
+      - { path: /var/log/nginx/access.log, format: nginx_access }
+      - { path: /var/log/nginx/error.log, format: nginx_error }
+
+  - name: db-01
+    type: ssh
+    address: 10.10.0.21
+    sudo: false             # el usuario pertenece al grupo systemd-journal
+    credentials:
+      username_env: DB01_SSH_USER
+      password_env: DB01_SSH_PASSWORD
+    journald:
+      enabled: true
+      units: [postgresql.service, ssh.service]
+      initial_since: "-1h"
+
+  - name: dc-01
+    type: winrm
+    address: dc-01.corp.example
+    port: 5986              # HTTPS
+    transport: ntlm         # o kerberos / credssp
+    verify_tls: true
+    credentials:
+      username_env: DC01_WINRM_USER       # ej. CORP\svc-logreader (miembro de "Event Log Readers")
+      password_env: DC01_WINRM_PASSWORD
+    channels:
+      - { log: Security, event_ids: [4625, 4624, 4740] }
+      - { log: System, event_ids: [7034, 7031, 6008] }
+      - { log: Application, levels: [1, 2] }
+
+  - name: syslog-central
+    type: local             # analizador corriendo en el mismo server que rsyslog
+    files:
+      - { path: /var/log/remote/firewall.log, format: syslog }

@@ -1,0 +1,55 @@
+# Laboratorio completo: app + PostgreSQL + dos hosts Linux con sshd generando logs.
+#   docker compose up --build
+#   http://localhost:8000
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: loganalyzer
+      POSTGRES_USER: loganalyzer
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-loganalyzer}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U loganalyzer -d loganalyzer"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  linux-01:
+    build: ./docker/linux-host
+    hostname: linux-01
+    environment:
+      COLLECTOR_PASSWORD: ${LAB_SSH_PASSWORD:-collector-lab}
+      NOISE_PROFILE: bruteforce
+
+  linux-02:
+    build: ./docker/linux-host
+    hostname: linux-02
+    environment:
+      COLLECTOR_PASSWORD: ${LAB_SSH_PASSWORD:-collector-lab}
+      NOISE_PROFILE: crashloop
+
+  app:
+    build: .
+    command: ["serve", "--host", "0.0.0.0", "--port", "8000", "--scheduler"]
+    ports:
+      - "8000:8000"
+    environment:
+      LOGAN_DATABASE_URL: postgresql+psycopg://loganalyzer:${POSTGRES_PASSWORD:-loganalyzer}@postgres:5432/loganalyzer
+      LOGAN_INVENTORY_PATH: config/hosts.compose.yaml
+      LOGAN_RULES_PATH: config/rules.yaml
+      LOGAN_SCHEDULE_MINUTES: "1"
+      LAB_SSH_USER: collector
+      LAB_SSH_PASSWORD: ${LAB_SSH_PASSWORD:-collector-lab}
+      LOGAN_WEBHOOK_URL: ${LOGAN_WEBHOOK_URL:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      linux-01:
+        condition: service_started
+      linux-02:
+        condition: service_started
+
+volumes:
+  pgdata:

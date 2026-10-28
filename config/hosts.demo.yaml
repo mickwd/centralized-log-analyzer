@@ -1,0 +1,24 @@
+# Inventario de la demo: todo con el collector local sobre samples/
+# (generar antes con: python scripts/generate_samples.py)
+
+defaults:
+  type: local
+  initial_position: beginning
+
+hosts:
+  - name: web-01
+    timezone: America/Argentina/Buenos_Aires
+    files:
+      - { path: samples/web-01/auth.log, format: auth }
+      - { path: samples/web-01/syslog, format: syslog }
+      - { path: samples/web-01/nginx/access.log, format: nginx_access }
+      - { path: samples/web-01/nginx/error.log, format: nginx_error }
+
+  - name: db-01
+    files:
+      - { path: samples/db-01/syslog, format: syslog }          # RFC5424
+      - { path: samples/db-01/journal.json, format: journald_json }
+
+  - name: dc-01
+    files:
+      - { path: samples/dc-01/windows-events.jsonl, format: windows_json }

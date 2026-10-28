@@ -1,0 +1,22 @@
+# Inventario usado por docker-compose (red interna del laboratorio).
+defaults:
+  type: ssh
+  port: 22
+  initial_position: beginning
+  strict_host_keys: false   # solo laboratorio: los contenedores regeneran sus host keys
+  credentials:
+    username_env: LAB_SSH_USER
+    password_env: LAB_SSH_PASSWORD
+
+hosts:
+  - name: linux-01
+    address: linux-01
+    files:
+      - { path: /var/log/auth.log, format: auth }
+      - { path: /var/log/syslog, format: syslog }
+
+  - name: linux-02
+    address: linux-02
+    files:
+      - { path: /var/log/auth.log, format: auth }
+      - { path: /var/log/syslog, format: syslog }

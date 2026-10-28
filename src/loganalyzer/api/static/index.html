@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Log Analyzer</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>Centralized Log Analyzer</h1>
+    <div class="controls">
+      <label>Rango
+        <select id="range">
+          <option value="6">6 h</option>
+          <option value="24" selected>24 h</option>
+          <option value="168">7 días</option>
+        </select>
+      </label>
+      <button id="refresh" type="button">Actualizar</button>
+      <span id="updated" class="muted"></span>
+    </div>
+  </header>
+
+  <main>
+    <section class="kpis" id="kpis"></section>
+
+    <section class="card wide">
+      <h2>Errores por hora y host</h2>
+      <div class="chart-box"><canvas id="errorsChart"></canvas></div>
+    </section>
+
+    <section class="card wide">
+      <h2>Incidentes abiertos</h2>
+      <table id="incidents">
+        <thead><tr><th>Sev.</th><th>Título</th><th>Host</th><th>Eventos</th><th>Último</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>Top firmas de error</h2>
+      <table id="signatures">
+        <thead><tr><th>#</th><th>Plantilla</th><th>Hosts</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>Top IPs ofensivas</h2>
+      <table id="ips">
+        <thead><tr><th>IP</th><th>Auth fallidas</th><th>HTTP 4xx/5xx</th><th>Hosts</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section class="card wide">
+      <h2>Búsqueda</h2>
+      <form id="search" class="filters">
+        <select name="host"><option value="">Host</option></select>
+        <select name="category"><option value="">Categoría</option></select>
+        <select name="min_severity"><option value="">Severidad mín.</option></select>
+        <input name="q" placeholder="Texto en el mensaje">
+        <button type="submit">Buscar</button>
+      </form>
+      <p id="searchTotal" class="muted"></p>
+      <table id="events">
+        <thead><tr><th>Fecha (UTC)</th><th>Host</th><th>Sev.</th><th>Categoría</th><th>Mensaje</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
